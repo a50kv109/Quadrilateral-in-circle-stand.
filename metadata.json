@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix CQNS-001 Cyclic Quadrilateral Normalization Stand",
+  "description": "Engineering and mathematical verification stand for cyclic quadrilaterals based on Geometry Reasoning Architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
