@@ -8,6 +8,7 @@
 
 import { UniversalGeometryState } from '../state/geometryState';
 import { Point, CartesianInput, CyclicInput } from '../../types/geometry';
+import { GeometryCore } from '../dag/geometryCore';
 
 export type StructuralStatus =
   | 'VALID'
@@ -41,6 +42,7 @@ export const DEGENERATE_AREA_TOLERANCE = 1e-10;  // Min shoelace area to avoid c
 export interface TopologyGuardConfig {
   readonly minVertexAngleGapRad?: number;
   readonly minVertexAngleGapDeg?: number;
+  readonly angleUnit?: 'DEG' | 'RAD';
 }
 
 /**
@@ -132,14 +134,8 @@ export class TopologyGuard {
         }
       }
 
-      // 5. Calculate shoelace area & orientation
-      let shoelaceSum = 0;
-      for (let i = 0; i < vertices.length; i++) {
-        const current = vertices[i];
-        const next = vertices[(i + 1) % vertices.length];
-        shoelaceSum += current.x * next.y - next.x * current.y;
-      }
-      const area = 0.5 * shoelaceSum;
+      // 5. Calculate shoelace area & orientation using centralized GeometryCore
+      const area = GeometryCore.calculateSignedArea(vertices);
       let orientation: 'CW' | 'CCW' | 'COLLINEAR' = 'COLLINEAR';
       if (area > DEGENERATE_AREA_TOLERANCE) {
         orientation = 'CCW';
@@ -235,7 +231,9 @@ export class TopologyGuard {
       }
 
       // 4. Determine angle units & constants
-      const isDegrees = angles.some(a => Math.abs(a) > 2 * Math.PI);
+      const isDegrees = config?.angleUnit
+        ? config.angleUnit === 'DEG'
+        : angles.some(a => Math.abs(a) > 2 * Math.PI);
       const period = isDegrees ? 360 : 2 * Math.PI;
       
       const minGapRad = config?.minVertexAngleGapRad ?? DEFAULT_MIN_VERTEX_ANGLE_GAP_RAD;
@@ -264,7 +262,7 @@ export class TopologyGuard {
         }
       }
 
-      // 6. Check for duplicate angles or gap failures
+      // 6. Check cyclic traversal winding (single full loop CCW or CW)
       // Step gaps along CCW direction
       const ccwGaps: number[] = [];
       let ccwSum = 0;
@@ -289,10 +287,25 @@ export class TopologyGuard {
         cwSum += gap;
       }
 
-      // Verify angular gaps
       const isCCW = Math.abs(ccwSum - period) < 1e-9;
       const isCW = Math.abs(cwSum - period) < 1e-9;
-      const activeGaps = isCCW ? ccwGaps : (isCW ? cwGaps : ccwGaps);
+
+      // Verify that traversal completes exactly one full monotonic circle loop
+      if (!isCCW && !isCW) {
+        issues.push("Vertices do not follow a valid monotonic cyclic order on the circle.");
+        return {
+          status: 'ORDER_INVALID',
+          profile,
+          vertexCount,
+          issues,
+          normalizedAngles: normalized,
+          arcGaps: ccwGaps,
+          stateVersion
+        };
+      }
+
+      // 7. Verify step gaps along the active traversal direction
+      const activeGaps = isCCW ? ccwGaps : cwGaps;
 
       for (let i = 0; i < vertexCount; i++) {
         const gap = activeGaps[i];
@@ -311,7 +324,7 @@ export class TopologyGuard {
         if (gap < minGap) {
           issues.push(`Angular gap (${gap.toFixed(4)}) between index ${i} and ${(i + 1) % vertexCount} is below MIN_VERTEX_ANGLE_GAP (${minGap}).`);
           return {
-            status: 'ORDER_INVALID', // Falling below structural limit breaks correct structural order representation
+            status: 'ORDER_INVALID',
             profile,
             vertexCount,
             issues,
@@ -320,20 +333,6 @@ export class TopologyGuard {
             stateVersion
           };
         }
-      }
-
-      // 7. Verify cyclic order wrap-around
-      if (!isCCW && !isCW) {
-        issues.push("Vertices do not follow a valid monotonic cyclic order on the circle.");
-        return {
-          status: 'ORDER_INVALID',
-          profile,
-          vertexCount,
-          issues,
-          normalizedAngles: normalized,
-          arcGaps: activeGaps,
-          stateVersion
-        };
       }
 
       // Cyclic ordering on a single circle naturally guarantees convexity and prevents self-intersection.

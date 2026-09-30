@@ -207,6 +207,66 @@ try {
   assert.strictEqual(quadState.stateVersion, initialCartVersion, "Validate must be read-only");
   console.log("✓ Test Cartesian I: Confirmed validate is strictly read-only and causes zero state mutations.");
 
+  // =========================================================================
+  // III. R1 MANDATORY CYCLIC CONTRACT TEST CASES (Section 9 & 18)
+  // =========================================================================
+  console.log("\n--- Section 9 Mandatory Cyclic Test Cases ---");
+
+  // Case 1: [10°, 100°, 200°, 300°] -> Expected: VALID
+  const case1State = UniversalGeometryState.createCyclic(centerPoint, 10, [10, 100, 200, 300]);
+  const case1Report = TopologyGuard.validate(case1State);
+  assert.strictEqual(case1Report.status, 'VALID', "Case 1 [10°, 100°, 200°, 300°] must be VALID");
+  console.log("✓ Case 1 [10°, 100°, 200°, 300°]: VALID as expected.");
+
+  // Case 2: [350°, 10°, 90°, 200°] -> Expected: VALID
+  const case2State = UniversalGeometryState.createCyclic(centerPoint, 10, [350, 10, 90, 200]);
+  const case2Report = TopologyGuard.validate(case2State);
+  assert.strictEqual(case2Report.status, 'VALID', "Case 2 [350°, 10°, 90°, 200°] must be VALID");
+  console.log("✓ Case 2 [350°, 10°, 90°, 200°]: VALID as expected.");
+
+  // Case 3: [200°, 20°, 100°, 300°] -> Expected: ORDER_INVALID (multi-loop winding)
+  const case3State = UniversalGeometryState.createCyclic(centerPoint, 10, [200, 20, 100, 300]);
+  const case3Report = TopologyGuard.validate(case3State);
+  assert.strictEqual(case3Report.status, 'ORDER_INVALID', "Case 3 [200°, 20°, 100°, 300°] must be rejected as ORDER_INVALID");
+  console.log("✓ Case 3 [200°, 20°, 100°, 300°]: ORDER_INVALID as expected.");
+
+  // Case 4: [0°, 90°, 180°, 270°] -> Expected: VALID
+  const case4State = UniversalGeometryState.createCyclic(centerPoint, 10, [0, 90, 180, 270]);
+  const case4Report = TopologyGuard.validate(case4State);
+  assert.strictEqual(case4Report.status, 'VALID', "Case 4 [0°, 90°, 180°, 270°] must be VALID");
+  console.log("✓ Case 4 [0°, 90°, 180°, 270°]: VALID as expected.");
+
+  // Case 5: [0°, 180°, 90°, 270°] -> Expected: structural rejection (ORDER_INVALID)
+  const case5State = UniversalGeometryState.createCyclic(centerPoint, 10, [0, 180, 90, 270]);
+  const case5Report = TopologyGuard.validate(case5State);
+  assert.strictEqual(case5Report.status, 'ORDER_INVALID', "Case 5 [0°, 180°, 90°, 270°] must be rejected as ORDER_INVALID");
+  console.log("✓ Case 5 [0°, 180°, 90°, 270°]: ORDER_INVALID as expected.");
+
+  // Test 6: Normalization does NOT reorder vertices (Section 7)
+  const negAnglesState = UniversalGeometryState.createCyclic(centerPoint, 10, [-10, 370, 90, 180]);
+  const negReport = TopologyGuard.validate(negAnglesState);
+  assert.strictEqual(negReport.status, 'VALID');
+  assert.deepStrictEqual(negReport.normalizedAngles, [350, 10, 90, 180], "Normalization must map values without changing index order");
+  console.log("✓ Test 6: Normalization preserves vertex sequence order (-10° -> 350°, 370° -> 10° at same indices).");
+
+  // Test 7: Derived Cartesian projection (Section 1.3 & 13)
+  const derivedPts = case4State.getDerivedCartesianVertices();
+  assert.strictEqual(derivedPts.length, 4);
+  assert.ok(Math.abs(derivedPts[0].x - 10) < 1e-6 && Math.abs(derivedPts[0].y - 0) < 1e-6); // 0° -> (10, 0)
+  assert.ok(Math.abs(derivedPts[1].x - 0) < 1e-6 && Math.abs(derivedPts[1].y - 10) < 1e-6); // 90° -> (0, 10)
+  assert.ok(Math.abs(derivedPts[2].x - (-10)) < 1e-6 && Math.abs(derivedPts[2].y - 0) < 1e-6); // 180° -> (-10, 0)
+  assert.ok(Math.abs(derivedPts[3].x - 0) < 1e-6 && Math.abs(derivedPts[3].y - (-10)) < 1e-6); // 270° -> (0, -10)
+  console.log("✓ Test 7: Pure derived Cartesian coordinates projected correctly without state mutation.");
+
+  // Test 8: Zero epistemic leakage (Section 6 & 14)
+  const structuralStatuses = ['VALID', 'DEGENERATE', 'DUPLICATE_VERTEX', 'ORDER_INVALID', 'SELF_INTERSECTION', 'INVALID_REFERENCE_CIRCLE', 'INVALID_ANGLE_SEQUENCE'];
+  assert.ok(structuralStatuses.includes(case1Report.status));
+  assert.ok(structuralStatuses.includes(case3Report.status));
+  // Verify report has no epistemic properties
+  assert.strictEqual((case1Report as any).epistemicStatus, undefined);
+  assert.strictEqual((case1Report as any).relations, undefined);
+  console.log("✓ Test 8: Zero epistemic leakage verified.");
+
   console.log("\n🎉 ALL REMIX 2 TOPOLOGY GUARD (R2-03) TESTS PASSED SUCCESSFULLY! 🎉\n");
 } catch (error) {
   console.error("❌ REMIX 2 TOPOLOGY GUARD TESTS FAILED!");

@@ -4,16 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "vite --config remix2/vite.config.ts --port=3000 --host=0.0.0.0",
+    "build": "vite build --config remix2/vite.config.ts",
+    "preview": "vite preview --config remix2/vite.config.ts",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
-    "test": "tsx src/test/cqnsRegression.test.ts",
+    "lint": "tsc -p remix2/tsconfig.json --noEmit",
+    "test": "npm run test:r2",
     "dev:r2": "vite --config remix2/vite.config.ts --port=3000 --host=0.0.0.0",
     "build:r2": "vite build --config remix2/vite.config.ts",
     "lint:r2": "tsc -p remix2/tsconfig.json --noEmit",
-    "test:r2": "tsx remix2/tests/foundation.test.ts && tsx remix2/tests/geometryState.test.ts && tsx remix2/tests/domainProfiles.test.ts && tsx remix2/tests/topologyGuard.test.ts && tsx remix2/tests/arcChordNormalizer.test.ts"
+    "test:r2": "tsx remix2/tests/foundation.test.ts && tsx remix2/tests/geometryState.test.ts && tsx remix2/tests/domainProfiles.test.ts && tsx remix2/tests/topologyGuard.test.ts && tsx remix2/tests/arcChordNormalizer.test.ts && tsx remix2/tests/uiShell.test.ts && tsx remix2/tests/toolsAndAuxiliary.test.ts && tsx remix2/tests/commandDispatcher.test.ts && tsx remix2/tests/normalizationStep1.test.ts && tsx remix2/tests/machineAngleControlRegression.test.ts && tsx remix2/tests/geometryStateSnapshotRegression.test.ts && tsx remix2/tests/areaMeasurementRegression.test.ts && tsx remix2/tests/geometryResearchRowMapperRegression.test.ts && tsx remix2/tests/geometryResearchTableRegression.test.ts && tsx remix2/tests/checkpointBufferRegression.test.ts && tsx remix2/tests/agentObservationUtilities.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

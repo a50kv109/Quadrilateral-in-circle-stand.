@@ -49,22 +49,23 @@ try {
   assert.ok(Math.abs(gapsDeg[3] - 150) < 1e-6);
   console.log("✓ TEST-C: Angular wrap-around normalized correctly.");
 
-  // TEST-D: Check order preservation (non-sorted)
-  const inputD = createInput([200, 20, 100, 300]);
+  // TEST-D: Check order preservation (non-sorted) on valid wrap-around sequence
+  const inputD = createInput([270, 0, 90, 180]);
   const resultD = ArcChordNormalizer.normalize(inputD, 1);
   assert.strictEqual(resultD.status, 'SUCCESS');
-  // Order must remain: 200, 20, 100, 300
-  // Gaps:
-  // 200 -> 20: 180 (gap)
-  // 20 -> 100: 80 (gap)
-  // 100 -> 300: 200 (gap)
-  // 300 -> 200: 260 (gap)
+  // Order must remain: 270, 0, 90, 180 (not sorted into 0, 90, 180, 270)
   const gapsDegD = resultD.arcGaps.map(g => (g * 180) / Math.PI);
-  assert.ok(Math.abs(gapsDegD[0] - 180) < 1e-6);
-  assert.ok(Math.abs(gapsDegD[1] - 80) < 1e-6);
-  assert.ok(Math.abs(gapsDegD[2] - 200) < 1e-6);
-  assert.ok(Math.abs(gapsDegD[3] - 260) < 1e-6);
+  assert.ok(Math.abs(gapsDegD[0] - 90) < 1e-6);
+  assert.ok(Math.abs(gapsDegD[1] - 90) < 1e-6);
+  assert.ok(Math.abs(gapsDegD[2] - 90) < 1e-6);
+  assert.ok(Math.abs(gapsDegD[3] - 90) < 1e-6);
   console.log("✓ TEST-D: Angular order preserved (not sorted).");
+
+  // TEST-D2: Check multi-loop non-cyclic order [200, 20, 100, 300] correctly flagged as DEGENERATE
+  const inputD2 = createInput([200, 20, 100, 300]);
+  const resultD2 = ArcChordNormalizer.normalize(inputD2, 1);
+  assert.strictEqual(resultD2.status, 'DEGENERATE', "Multi-loop 720° sequence must be DEGENERATE");
+  console.log("✓ TEST-D2: Multi-loop non-cyclic sequence correctly classified as DEGENERATE.");
 
   // TEST-K & TEST-L: Check read-only / no state mutation
   const originalAngles = [...inputA.angles];

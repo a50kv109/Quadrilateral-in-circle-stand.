@@ -17,14 +17,15 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": [
-        "./*"
+      "@remix2/*": [
+        "./remix2/src/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": [
-    "remix2"
+  "include": [
+    "remix2/src/**/*",
+    "remix2/tests/**/*"
   ]
 }

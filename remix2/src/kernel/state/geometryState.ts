@@ -270,4 +270,34 @@ export class UniversalGeometryState {
       Object.freeze([...draft.constructionLineage])
     );
   }
+
+  /**
+   * Pure derived projection: Compute Cartesian coordinates for all vertices.
+   * - CARTESIAN: returns canonical vertices as-is.
+   * - CYCLIC: derives P_i = O + R * (cos(alpha_i), sin(alpha_i)) on demand.
+   * Never mutates state, caches mutable data, or acts as a second canonical source of truth.
+   */
+  getDerivedCartesianVertices(): readonly Point[] {
+    if (this.domainProfile === 'CARTESIAN') {
+      return (this.canonicalInputs as CartesianInput).vertices;
+    }
+
+    const inputs = this.canonicalInputs as CyclicInput;
+    const { center, radius } = inputs.referenceCircle;
+    const isDegrees = inputs.angles.some(a => Math.abs(a) > 2 * Math.PI);
+
+    const derived = inputs.angles.map((angle, i) => {
+      const rad = isDegrees ? (angle * Math.PI) / 180 : angle;
+      const pt: Point = {
+        id: `P${i}`,
+        x: center.x + radius * Math.cos(rad),
+        y: center.y + radius * Math.sin(rad)
+      };
+      Object.freeze(pt);
+      return pt;
+    });
+
+    Object.freeze(derived);
+    return derived;
+  }
 }
